@@ -51,8 +51,8 @@ SRCS := \
 
 OBJS += $(filter %.o,$(SRCS:.cpp=.o))
 
-libaac.o: $(OBJS)
-	$(CXX) $(LDFLAGS) -o libaac.o $(OBJS) $(LIBS)
+libaac.so: $(OBJS)
+	$(CXX) $(LDFLAGS) -o libaac.so $(OBJS) $(LIBS)
 
 %.o: %.cpp
 	@rm -f $@ 
@@ -60,4 +60,4 @@ libaac.o: $(OBJS)
 
 clean:
 	for i in $(OBJS); do (if test -e "$$i"; then ( rm $$i ); fi ); done
-	@rm -f libaac.o
+	@rm -f libaac.so
