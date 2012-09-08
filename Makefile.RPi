@@ -1,53 +1,38 @@
-CFLAGS  := -fPIC -O2 -IlibAACdec/include -IlibAACenc/include -IlibPCMutils/include -IlibFDK/include -IlibSYS/include -IlibMpegTPDec/include -IlibMpegTPEnc/include -IlibSBRdec/include -IlibSBRenc/include
-LIBS	:= -shared -lc
+CC        := gcc
+CXX       := g++
+LD        := g++
+CFLAGS    := -D__ARM_CPU_ARCH__ -D__ARMv6_CPU_ARCH__ -fPIC -O2
+LDFLAGS   := -shared -lpthread -lrt
 
-aacdec_sources := $(wildcard libAACdec/src/*.cpp)
-aacdec_sources := $(aacdec_sources:libAACdec/src/%=%)
+MODULES   := libAACdec libAACenc libPCMutils libFDK libSYS libMpegTPDec libMpegTPEnc libSBRdec libSBRenc
+SRC_DIR   := $(addsuffix /src,$(MODULES))
+BUILD_DIR := $(addprefix out/,$(SRC_DIR))
 
-aacenc_sources := $(wildcard libAACenc/src/*.cpp)
-aacenc_sources := $(aacenc_sources:libAACenc/src/%=%)
+SRCS      := $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.cpp))
+OBJS      := $(patsubst %.cpp,out/%.o,$(SRCS))
+INCLUDES  := $(addsuffix /include,$(addprefix -I,$(MODULES)))
 
-pcmutils_sources := $(wildcard libPCMutils/src/*.cpp)
-pcmutils_sources := $(pcmutils_sources:libPCMutils/src/%=%)
+vpath %.cpp $(SRC_DIR)
 
-fdk_sources := $(wildcard libFDK/src/*.cpp)
-fdk_sources := $(fdk_sources:libFDK/src/%=%)
+define make-srcs
+$1/%.o: %.cpp
+	$(CXX) $(CFLAGS) $(INCLUDES) -c $$< -o $$@
+endef
 
-sys_sources := $(wildcard libSYS/src/*.cpp)
-sys_sources := $(sys_sources:libSYS/src/%=%)
+.PHONY: all checkdirs clean
 
-mpegtpdec_sources := $(wildcard libMpegTPDec/src/*.cpp)
-mpegtpdec_sources := $(mpegtpdec_sources:libMpegTPDec/src/%=%)
+all: checkdirs libaac.so
 
-mpegtpenc_sources := $(wildcard libMpegTPEnc/src/*.cpp)
-mpegtpenc_sources := $(mpegtpenc_sources:libMpegTPEnc/src/%=%)
+libaac.so: $(OBJS)
+	$(LD) $(LDFLAGS) $^ -o $@
 
-sbrdec_sources := $(wildcard libSBRdec/src/*.cpp)
-sbrdec_sources := $(sbrdec_sources:libSBRdec/src/%=%)
+checkdirs: $(BUILD_DIR)
 
-sbrenc_sources := $(wildcard libSBRenc/src/*.cpp)
-sbrenc_sources := $(sbrenc_sources:libSBRenc/src/%=%)
-
-SRCS := \
-    $(aacdec_sources:%=libAACdec/src/%) \
-    $(aacenc_sources:%=libAACenc/src/%) \
-    $(pcmutils_sources:%=libPCMutils/src/%) \
-    $(fdk_sources:%=libFDK/src/%) \
-    $(sys_sources:%=libSYS/src/%) \
-    $(mpegtpdec_sources:%=libMpegTPDec/src/%) \
-    $(mpegtpenc_sources:%=libMpegTPEnc/src/%) \
-    $(sbrdec_sources:%=libSBRdec/src/%) \
-    $(sbrenc_sources:%=libSBRenc/src/%)
-
-OBJS += $(filter %.o,$(SRCS:.cpp=.o))
-
-libaac.o: $(OBJS)
-	$(CXX) $(LDFLAGS) -o libaac.o $(OBJS) $(LIBS)
-
-%.o: %.cpp
-	@rm -f $@ 
-	$(CXX) $(CFLAGS) $(INCLUDES) -c $< -o $@
+$(BUILD_DIR):
+	@mkdir -p $@
 
 clean:
-	for i in $(OBJS); do (if test -e "$$i"; then ( rm $$i ); fi ); done
-	@rm -f libaac.o
+	@rm -rf $(BUILD_DIR)
+
+$(foreach bdir,$(BUILD_DIR),$(eval $(call make-srcs,$(bdir))))
+
